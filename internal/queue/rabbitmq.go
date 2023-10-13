@@ -19,6 +19,19 @@ type RabbitMQConnection struct {
 	conn *amqp.Connection
 }
 
+func newRabbitMQConnection(cfg RabbitMQConfig) (*RabbitMQConnection, error) {
+	var err error
+	r := RabbitMQConnection{
+		cfg: cfg,
+	}
+
+	r.conn, err = amqp.Dial(r.cfg.URL)
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
 func (r *RabbitMQConnection) Publish(msg []byte) error {
 	c, err := r.conn.Channel()
 	if err != nil {
@@ -42,7 +55,7 @@ func (r *RabbitMQConnection) Publish(msg []byte) error {
 	return nil
 }
 
-func (r *RabbitMQConnection) Consume() error {
+func (r *RabbitMQConnection) Consume(data chan<- QueueDto) error {
 	c, err := r.conn.Channel()
 	if err != nil {
 		return err
@@ -62,6 +75,13 @@ func (r *RabbitMQConnection) Consume() error {
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s", d.Body)
+			qd := new(QueueDto)
+			err := qd.Unmarshal(d.Body)
+			if err != nil {
+				log.Printf("Error unmarshalling message: %s", err)
+				continue
+			}
+			data <- *qd
 		}
 	}()
 

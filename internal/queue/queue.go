@@ -14,11 +14,10 @@ type QueueType int
 
 type QueueConnection interface {
 	Publish([]byte) error
-	Consume() error
+	Consume(data chan<- QueueDto) error
 }
 type Queue struct {
-	cfg any
-	qc  QueueConnection
+	qc QueueConnection
 }
 
 func New(qt QueueType, cfg any) (*Queue, error) {
@@ -29,7 +28,13 @@ func New(qt QueueType, cfg any) (*Queue, error) {
 		if rt != reflect.TypeOf(RabbitMQConfig{}) {
 			return nil, fmt.Errorf("invalid config type")
 		}
-		fmt.Println("NOT IMPLEMENTED YET")
+
+		qc, err := newRabbitMQConnection(cfg.(RabbitMQConfig))
+		if err != nil {
+			return nil, err
+		}
+
+		q.qc = qc
 	default:
 		log.Fatal("Queue type not implemented")
 
@@ -42,6 +47,6 @@ func (q *Queue) Publish(msg []byte) error {
 	return q.qc.Publish(msg)
 }
 
-func (q *Queue) Consume() error {
-	return q.qc.Consume()
+func (q *Queue) Consume(data chan<- QueueDto) error {
+	return q.qc.Consume(data)
 }
