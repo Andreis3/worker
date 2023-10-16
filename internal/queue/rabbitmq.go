@@ -11,7 +11,7 @@ import (
 type RabbitMQConfig struct {
 	URL       string
 	TopicName string
-	Timeout   time.Time
+	Timeout   time.Duration
 }
 
 type RabbitMQConnection struct {
@@ -72,18 +72,16 @@ func (r *RabbitMQConnection) Consume(data chan<- QueueDto) error {
 		return err
 	}
 
-	go func() {
-		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
-			qd := new(QueueDto)
-			err := qd.Unmarshal(d.Body)
-			if err != nil {
-				log.Printf("Error unmarshalling message: %s", err)
-				continue
-			}
-			data <- *qd
+	for d := range msgs {
+		log.Printf("Received a message: %s", d.Body)
+		qd := new(QueueDto)
+		err := qd.Unmarshal(d.Body)
+		if err != nil {
+			log.Printf("Error unmarshalling message: %s", err)
+			continue
 		}
-	}()
+		data <- *qd
+	}
 
 	return nil
 }
